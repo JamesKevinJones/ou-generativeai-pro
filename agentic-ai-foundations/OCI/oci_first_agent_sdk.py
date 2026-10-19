@@ -11,21 +11,22 @@ entire ReAct loop for you — no while True, no previous_response_id.
 Three ways to build the same agent:
   1. oci_first_agent.py         → Manual loop (OCI Responses API)
   2. oci_first_agent_sdk.py     → OpenAI Agents SDK (THIS FILE)
-  3. 02_first_agent.py          → LangChain (create_agent)
+  3. LangChain/first_agent.py  → LangChain (create_agent)
 
 Prerequisites:
-  pip install openai-agents
+  pip install openai-agents python-dotenv
 
 Authentication:
   1. Create an API Key in OCI Console → Generative AI → API Keys
   2. Add IAM policy:
      allow any-user to use generative-ai-family in compartment <n>
        where ALL { request.principal.type='generativeaiapikey' }
-  3. Set environment variable:
-     Windows (cmd):   set OCI_GENAI_API_KEY=your-key-here
-     Windows (PS):    $env:OCI_GENAI_API_KEY='your-key-here'
-     macOS / Linux:   export OCI_GENAI_API_KEY='your-key-here'
-  4. Set OCI_REGION and OCI_PROJECT_ID below
+  3. Put your settings in a .env file next to this script (a .env in the
+     course root folder, or environment variables, also work):
+       OCI_GENAI_API_KEY=your-key-here
+       PROJECT_ID=ocid1.generativeaiproject.oc1...   (required)
+       REGION=us-chicago-1                          (optional, this is the default)
+       MODEL_ID=openai.gpt-oss-120b                 (optional, this is the default)
 
 Reference:
   https://docs.oracle.com/en-us/iaas/Content/generative-ai/agents.htm
@@ -36,6 +37,9 @@ Reference:
 import asyncio
 import math
 import os
+from pathlib import Path
+
+from dotenv import load_dotenv
 
 from openai import AsyncOpenAI
 from agents import (
@@ -51,18 +55,24 @@ from agents import (
 # ─── Configuration ──────────────────────────────────────────────────────────
 # IMPORTANT: Change these to match YOUR OCI tenancy.
 
-OCI_REGION = "us-chicago-1"   # <-- CHANGE THIS to your region
+# Load settings from a .env next to this script, then from the course root.
+# load_dotenv never overwrites a value that is already set.
+script_dir = Path(__file__).resolve().parent
+load_dotenv(dotenv_path=script_dir / ".env")
+load_dotenv(dotenv_path=script_dir.parent / ".env")
+
+OCI_REGION = os.getenv("REGION", "us-chicago-1")
 
 OCI_BASE_URL = (
     f"https://inference.generativeai.{OCI_REGION}"
     f".oci.oraclecloud.com/openai/v1"
 )
 
-MODEL = "openai.gpt-oss-120b"
+MODEL = os.getenv("MODEL_ID", "openai.gpt-oss-120b")
 
 # OCI Project ID (REQUIRED)
 # OCI Console → Generative AI → Projects → your project → OCID
-OCI_PROJECT_ID = ""
+OCI_PROJECT_ID = os.getenv("PROJECT_ID", "")
 
 
 # ─── OCI Model Provider ────────────────────────────────────────────────────
@@ -73,15 +83,11 @@ def _create_oci_client():
     """Create an async OpenAI client pointing to OCI."""
     api_key = os.getenv("OCI_GENAI_API_KEY")
     if not api_key:
-        print("ERROR: Set the OCI_GENAI_API_KEY environment variable.")
-        print()
-        print("  Windows (cmd):    set OCI_GENAI_API_KEY=your-key-here")
-        print("  Windows (PS):     $env:OCI_GENAI_API_KEY='your-key-here'")
-        print("  macOS / Linux:    export OCI_GENAI_API_KEY='your-key-here'")
+        print("ERROR: Set OCI_GENAI_API_KEY in your .env file.")
         exit(1)
 
     if not OCI_PROJECT_ID or OCI_PROJECT_ID.startswith("<"):
-        print("ERROR: Set OCI_PROJECT_ID in the script.")
+        print("ERROR: Set PROJECT_ID in your .env file.")
         print("       OCI Console → Generative AI → Projects → Copy OCID")
         exit(1)
 
@@ -236,10 +242,10 @@ async def simple_chat_example():
 
 
 # =============================================================================
-# EXAMPLE 2: Math Agent — Same test cases as 02_first_agent.py
+# EXAMPLE 2: Math Agent — Same test cases as LangChain/first_agent.py
 # =============================================================================
 async def math_agent_example():
-    """Same test cases from LangChain 02_first_agent.py."""
+    """Same test cases as LangChain/first_agent.py."""
     print("=" * 60)
     print("EXAMPLE 2: Math Agent (4 tools — add, multiply, divide, sqrt)")
     print("=" * 60)
@@ -274,7 +280,7 @@ async def main():
     print()
     print("─" * 60)
     print("  OCI Enterprise AI Agents — Agents SDK Version")
-    print("  (Based on LangChain 02_first_agent.py)")
+    print("  (Based on LangChain/first_agent.py)")
     print("─" * 60)
     print()
     print(f"  Endpoint : {OCI_BASE_URL}")
@@ -295,7 +301,7 @@ async def main():
     print("  ┌───────────────────────┬──────────────────────────────────┐")
     print("  │ File                  │ Approach                         │")
     print("  ├───────────────────────┼──────────────────────────────────┤")
-    print("  │ 02_first_agent.py     │ LangChain  (@tool + create_agent)│")
+    print("  │ first_agent.py        │ LangChain  (@tool + create_agent)│")
     print("  │ oci_first_agent.py    │ Manual     (JSON + while loop)   │")
     print("  │ oci_first_agent_sdk.py│ Agents SDK (@function_tool)      │")
     print("  └───────────────────────┴──────────────────────────────────┘")

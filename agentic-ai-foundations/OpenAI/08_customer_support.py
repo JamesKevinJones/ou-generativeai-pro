@@ -1,5 +1,5 @@
 """
-Lesson 07: Complete Project — Customer Support Agent System
+Lesson 08: Complete Project — Customer Support Agent System
 =============================================================
 This brings together EVERYTHING from the course:
   - Multiple agents with handoffs 
@@ -25,6 +25,7 @@ from agents import (
     Runner,
     function_tool,
     InputGuardrail,
+    InputGuardrailTripwireTriggered,
     GuardrailFunctionOutput,
     input_guardrail,
     WebSearchTool,
@@ -89,7 +90,7 @@ guardrail_checker = Agent(
     Invalid topics: personal advice, jokes, coding help, unrelated conversations.
     Return is_support_question=True ONLY for customer support topics.""",
     output_type=SupportCheck,
-    model="gpt-5.5",
+    model="gpt-4.1-mini",  # fast, cheap model for guardrail checks (see lesson 07)
 )
 
 
@@ -169,7 +170,9 @@ async def handle_customer(message: str):
     try:
         result = await Runner.run(triage_agent, message)
         print(f"🤖 {result.last_agent.name}: {result.final_output}")
-    except Exception as e:
+    except InputGuardrailTripwireTriggered:
+        # Only the guardrail lands here. Any other error (a bad API key, a
+        # network problem) is raised normally so you can see what went wrong.
         print(f"🚫 Blocked: This doesn't appear to be a support question.")
     print("=" * 70)
     print()

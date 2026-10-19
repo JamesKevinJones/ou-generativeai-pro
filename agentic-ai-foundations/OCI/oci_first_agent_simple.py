@@ -9,7 +9,7 @@ This script demonstrates two examples:
   2. Function Agent — An agent that uses Function Calling to look up weather
 
 Prerequisites:
-  pip install openai
+  pip install openai python-dotenv
 
 Authentication (choose one):
   Option A — API Key (simplest, recommended for beginners):
@@ -17,18 +17,19 @@ Authentication (choose one):
     2. Add an IAM policy:
        allow any-user to use generative-ai-family in compartment <name>
          where ALL { request.principal.type='generativeaiapikey' }
-    3. Set the environment variable:
-       Windows (cmd):   set OCI_GENAI_API_KEY=your-key-here
-       Windows (PS):    $env:OCI_GENAI_API_KEY='your-key-here'
-       macOS / Linux:   export OCI_GENAI_API_KEY='your-key-here'
-    4. IMPORTANT: Change OCI_REGION below to match your tenancy region
+    3. Put your settings in a .env file next to this script (a .env in
+       the course root folder, or environment variables, also work):
+         OCI_GENAI_API_KEY=your-key-here
+         PROJECT_ID=ocid1.generativeaiproject.oc1...   (required)
+         REGION=us-chicago-1                          (optional, this is the default)
+         MODEL_ID=openai.gpt-oss-120b                 (optional, this is the default)
 
   Option B — OCI IAM Auth (production):
     pip install oci-genai-auth
     See: https://github.com/oracle-samples/oci-genai-auth-python
 
 Usage:
-  python oci_first_agent.py
+  python oci_first_agent_simple.py
 
 Reference:
   https://docs.oracle.com/en-us/iaas/Content/generative-ai/agents.htm
@@ -39,13 +40,21 @@ Reference:
 from openai import OpenAI
 import os
 import json
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load settings from a .env next to this script, then from the course root.
+# load_dotenv never overwrites a value that is already set.
+script_dir = Path(__file__).resolve().parent
+load_dotenv(dotenv_path=script_dir / ".env")
+load_dotenv(dotenv_path=script_dir.parent / ".env")
 
 # ─── Configuration ──────────────────────────────────────────────────────────
-# IMPORTANT: Change OCI_REGION to match YOUR OCI tenancy region.
+# IMPORTANT: Set REGION in your .env to match YOUR OCI tenancy region.
 # Supported regions: us-chicago-1, us-ashburn-1, us-phoenix-1,
 #                    eu-frankfurt-1, ap-hyderabad-1, ap-osaka-1
 
-OCI_REGION = "us-chicago-1"   # <-- CHANGE THIS to your region
+OCI_REGION = os.getenv("REGION", "us-chicago-1")
 
 # Two endpoint paths exist — pick the one matching your auth method:
 #   API Key auth  →  /openai/v1
@@ -62,12 +71,12 @@ OCI_BASE_URL = (
 #   "xai.grok-3-mini"      — xAI Grok 3 Mini (lightweight)
 #   "xai.grok-4"           — xAI Grok 4 (latest)
 
-MODEL = "openai.gpt-oss-120b"
+MODEL = os.getenv("MODEL_ID", "openai.gpt-oss-120b")
 
 # OCI Project ID (REQUIRED)
 # Find it in the OCI Console → Generative AI → Projects → your project → OCID
 # It looks like: ocid1.generativeaiproject.oc1.us-chicago-1.amaaaa...
-OCI_PROJECT_ID = ""
+OCI_PROJECT_ID = os.getenv("PROJECT_ID", "")
 
 
 # ─── Create the Client ──────────────────────────────────────────────────────
@@ -75,15 +84,11 @@ def create_client():
     """Create an OpenAI client pointing to OCI Generative AI."""
     api_key = os.getenv("OCI_GENAI_API_KEY")
     if not api_key:
-        print("ERROR: Set the OCI_GENAI_API_KEY environment variable.")
-        print()
-        print("  Windows (cmd):    set OCI_GENAI_API_KEY=your-key-here")
-        print("  Windows (PS):     $env:OCI_GENAI_API_KEY='your-key-here'")
-        print("  macOS / Linux:    export OCI_GENAI_API_KEY='your-key-here'")
+        print("ERROR: Set OCI_GENAI_API_KEY in your .env file.")
         exit(1)
 
     if not OCI_PROJECT_ID or OCI_PROJECT_ID.startswith("<"):
-        print("ERROR: Set OCI_PROJECT_ID in the script.")
+        print("ERROR: Set PROJECT_ID in your .env file.")
         print("       OCI Console → Generative AI → Projects → Copy OCID")
         exit(1)
 

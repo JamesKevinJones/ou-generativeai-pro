@@ -211,4 +211,4 @@ run_agent("What is 100 divided by 0?")
 
 
 # Final message
-print("✅ Agent demo complete! Next: try 03_search_agent.py")
+print("✅ Agent demo complete! Next: try MCP/first_agent_with_mcp.py")

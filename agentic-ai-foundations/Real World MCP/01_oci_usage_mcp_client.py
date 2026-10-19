@@ -4,7 +4,7 @@
 Real-world MCP demo: calling Oracle's published OCI Usage MCP server.
 
 In your earlier MCP lessons, you wrote BOTH the server (mcp_math_server.py)
-and the client (02_first_agent_with_mcp.py). That was great for learning
+and the client (first_agent_with_mcp.py). That was great for learning
 the mechanics, but in the real world you almost never write the server -
 you connect to one that someone else (a vendor, a SaaS, an internal team)
 has already published.
@@ -24,7 +24,7 @@ for us, using the OCI CLI profile in %USERPROFILE%\\.oci\\config.
 
 OUTPUT
 ------
-We call get_summarized_usage for the last 7 days, grouped by SERVICE at
+We call get_summarized_usage for the last 30 days, grouped by SERVICE at
 DAILY granularity, and produce TWO views of the result:
 
     1. A pivoted table printed to the terminal, for a quick glance.
@@ -299,7 +299,7 @@ async def main() -> None:
             print()
 
             # Build arguments. These mirror the OCI Console's Cost
-            # Analysis filters: last 7 days, Daily, Cost, Group by Service.
+            # Analysis filters: last 30 days, Daily, Cost, Group by Service.
             tenancy_ocid = get_tenancy_ocid("DEFAULT")
             today_utc = datetime.now(timezone.utc).replace(
                 hour=0, minute=0, second=0, microsecond=0

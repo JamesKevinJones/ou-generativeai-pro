@@ -35,6 +35,7 @@ Usage:
 ==========================================================
 """
 import os
+import sys
 import asyncio
 from dotenv import load_dotenv
 import warnings
@@ -117,7 +118,9 @@ async def main():
         {
             "math": {
                 # The MCP server to connect to
-                "command": "python",
+                # sys.executable = the Python running this script (your
+                # venv), so the server can import the same packages.
+                "command": sys.executable,
                 "args": [server_path],
                 "transport": "stdio",       # Local process (stdin/stdout)
             },

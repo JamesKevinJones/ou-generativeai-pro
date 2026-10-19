@@ -14,9 +14,12 @@ Prerequisites:
 Authentication (one-time setup):
   1. OCI Console → Generative AI → API Keys → create a key
   2. Add the IAM policy that lets the key use the GenAI service
-  3. Put the key in a .env file next to this script:
+  3. Put your settings in a .env file next to this script (a .env in the
+     course root folder also works):
        OCI_GENAI_API_KEY=your-key-here
-  4. Set OCI_REGION and OCI_PROJECT_ID below to match your tenancy
+       PROJECT_ID=ocid1.generativeaiproject.oc1...   (required)
+       REGION=us-chicago-1                          (optional, this is the default)
+       MODEL_ID=openai.gpt-oss-120b                 (optional, this is the default)
 
 Reference:
   https://docs.oracle.com/en-us/iaas/Content/generative-ai/agents.htm
@@ -31,19 +34,22 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # ── Load the API key ─────────────────────────────────────────────────────────
-#      "We keep the key out of the code in a .env file. This line finds that
+#      "We keep the key out of the code in a .env file. These lines find that
 #       file sitting right next to the script, no matter where we run python
 #       from." Path(__file__) is this file; .parent is its folder.
-script_dir = Path(__file__).resolve().parent.resolve().parent
+#       A .env in the course root (one folder up) is used as a fallback;
+#       load_dotenv never overwrites a value that is already set.
+script_dir = Path(__file__).resolve().parent
 load_dotenv(dotenv_path=script_dir / ".env")
+load_dotenv(dotenv_path=script_dir.parent / ".env")
 
 # Confirm the key loaded WITHOUT printing the key itself (never print secrets).
 print("OCI_GENAI_API_KEY found:", bool(os.getenv("OCI_GENAI_API_KEY")))
 
 # ─── Configuration ───────────────────────────────────────────────────────────
-OCI_REGION = os.getenv("REGION")          # <-- CHANGE to your region
+OCI_REGION = os.getenv("REGION", "us-chicago-1")          # your tenancy's region
 OCI_BASE_URL = (f"https://inference.generativeai.{OCI_REGION}"f".oci.oraclecloud.com/openai/v1")
-MODEL = os.getenv("MODEL_ID")       # strong reasoning model on OCI
+MODEL = os.getenv("MODEL_ID", "openai.gpt-oss-120b")       # strong reasoning model on OCI
 OCI_PROJECT_ID = os.getenv("PROJECT_ID")
 
 # ─── Create the Client ───────────────────────────────────────────────────────
@@ -56,7 +62,7 @@ def create_client():
         exit(1)
 
     if not OCI_PROJECT_ID:
-        print("ERROR: Set OCI_PROJECT_ID in the script.")
+        print("ERROR: Set PROJECT_ID in your .env file.")
         print("       OCI Console -> Generative AI -> Projects -> Copy OCID")
         exit(1)
 
@@ -205,7 +211,11 @@ def run_agent(client, question: str):
         for tc in tool_calls:
             func = TOOL_DISPATCH.get(tc.name)
             args = json.loads(tc.arguments)
-            result = func(**args)
+            if func is None:
+                # Tell the model instead of crashing, so it can recover.
+                result = f"Error: Unknown tool '{tc.name}'"
+            else:
+                result = func(**args)
             print(f"  🔧 Step {iteration}: {tc.name}({args}) → {result}")
 
             # Package the result so the model can read it on the next round.
@@ -217,10 +227,13 @@ def run_agent(client, question: str):
 
         #      "Feed the results back. previous_response_id lets OCI remember
         #       the conversation so far — no need to resend everything."
+        #       The tool list is NOT remembered, though: send it on every call,
+        #       or the model can't ask for a second tool (multiply, THEN divide).
         response = client.responses.create(
             model=MODEL,
             previous_response_id=response.id,
             input=tool_results,
+            tools=MATH_TOOLS,
         )
 
     print("=" * 50)
@@ -266,20 +279,18 @@ def math_agent_example(client):
 
     # Case 2 — MEDIUM: two tools, in sequence (multiply, then divide).
     run_agent(client, "What is 15 multiplied by 8, then divided by 3?")
-    run_agent(client, "What is 15 multiplied by 8?")
-    run_agent(client, "What is 120 divided by 3?")
 
     # Case 3 — COMPLEX: multi-step planning (area = w×h, then its square root).
     #      "Watch — the model figures out it needs multiply FIRST, then feeds
     #       that answer into square_root. We never told it the steps."
-    #run_agent(client,
-    #          "I have a rectangle with width 12 and height 7. "
-    #          "What is its area, and what is the square root of that area?")
+    run_agent(client,
+              "I have a rectangle with width 12 and height 7. "
+              "What is its area, and what is the square root of that area?")
 
     # Case 4 — EDGE CASE: error handling. Our divide tool refuses cleanly.
     #      "Good tools fail gracefully. The agent reports the error instead
     #       of crashing."
-    #run_agent(client, "What is 100 divided by 0?")
+    run_agent(client, "What is 100 divided by 0?")
 
 
 # =============================================================================

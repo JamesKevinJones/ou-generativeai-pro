@@ -6,10 +6,15 @@ from going off-topic or producing unsafe responses.
 """
 
 import asyncio
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from agents import (
     Agent,
     Runner,
     InputGuardrail,
+    InputGuardrailTripwireTriggered,
     GuardrailFunctionOutput,
     input_guardrail,
 )
@@ -78,7 +83,7 @@ async def main():
     try:
         result = await Runner.run(science_agent, "How does gravity work?")
         print(f"✅ Answer: {result.final_output}")
-    except Exception as e:
+    except InputGuardrailTripwireTriggered as e:
         print(f"❌ Blocked: {e}")
     print()
 
@@ -87,7 +92,7 @@ async def main():
     try:
         result = await Runner.run(science_agent, "What is 15 * 23?")
         print(f"✅ Answer: {result.final_output}")
-    except Exception as e:
+    except InputGuardrailTripwireTriggered as e:
         print(f"❌ Blocked! The guardrail prevented this off-topic question.")
         print(f"   Error type: {type(e).__name__}")
     print()
@@ -97,7 +102,7 @@ async def main():
     try:
         result = await Runner.run(science_agent, "Tell me a joke.")
         print(f"✅ Answer: {result.final_output}")
-    except Exception as e:
+    except InputGuardrailTripwireTriggered:
         print(f"❌ Blocked! The guardrail prevented this off-topic request.")
     print()
 
